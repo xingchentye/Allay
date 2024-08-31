@@ -24,19 +24,15 @@ public interface ChunkLoader {
 
     int getChunkTrySendCountPerTick();
 
-    void publishClientChunkUpdate();
+    void beforeSendChunks();
 
-    void onChunkInRangeSent(Chunk chunk);
+    void onChunkInRangeSend(Chunk chunk);
 
     void spawnEntity(Entity entity);
 
     void despawnEntity(Entity entity);
 
     void onChunkOutOfRange(Set<Long> chunkHashes);
-
-    default void unloadChunk(Long chunkHash) {
-        onChunkOutOfRange(Set.of(chunkHash));
-    }
 
     void sendLevelChunkPacket(LevelChunkPacket lcp);
 

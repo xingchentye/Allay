@@ -133,9 +133,11 @@ public class LevelDBChunkSerializer {
     private void serializeHeightAndBiome(WriteBatch writeBatch, AllayUnsafeChunk chunk) {
         ByteBuf heightAndBiomesBuffer = ByteBufAllocator.DEFAULT.ioBuffer();
         try {
+            // Serialize height map
             for (short height : chunk.getHeightArray()) {
                 heightAndBiomesBuffer.writeShortLE(height);
             }
+            // Serialize biome
             Palette<BiomeType> lastPalette = null;
             for (int y = chunk.getDimensionInfo().minSectionY(); y <= chunk.getDimensionInfo().maxSectionY(); y++) {
                 ChunkSection section = chunk.getSection(y);
@@ -152,6 +154,7 @@ public class LevelDBChunkSerializer {
     private void deserializeHeightAndBiome(DB db, AllayUnsafeChunk.Builder builder) {
         ByteBuf heightAndBiomesBuffer = null;
         try {
+            // Try load data_3d
             byte[] bytes = db.get(LevelDBKeyUtils.DATA_3D.getKey(builder.getChunkX(), builder.getChunkZ(), builder.getDimensionInfo()));
             if (bytes != null) {
                 heightAndBiomesBuffer = Unpooled.wrappedBuffer(bytes);
@@ -170,6 +173,8 @@ public class LevelDBChunkSerializer {
                 }
                 return;
             }
+
+            // Try load data_2d if data_3d is not found
             byte[] bytes2D = db.get(LevelDBKeyUtils.DATA_2D.getKey(builder.getChunkX(), builder.getChunkZ(), builder.getDimensionInfo()));
             if (bytes2D == null) return;
             heightAndBiomesBuffer = Unpooled.wrappedBuffer(bytes2D);
@@ -271,11 +276,11 @@ public class LevelDBChunkSerializer {
     }
 
     private BiomeType getBiomeByIdNonNull(int id) {
-        var biome = BiomeId.fromId(id);
-        if (biome == null) {
+        try {
+            return BiomeId.fromId(id);
+        } catch (ArrayIndexOutOfBoundsException e) {
             log.warn("Unknown biome id: {}", id);
-            biome = BiomeId.PLAINS;
+            return BiomeId.PLAINS;
         }
-        return biome;
     }
 }
