@@ -7,6 +7,7 @@ import org.allaymc.api.block.dto.PlayerInteractInfo;
 import org.allaymc.api.block.type.BlockState;
 import org.allaymc.api.block.type.BlockTypes;
 import org.allaymc.api.entity.interfaces.EntityPlayer;
+import org.allaymc.api.eventbus.event.block.BlockBreakEvent;
 import org.allaymc.api.item.ItemStack;
 import org.allaymc.api.math.position.Position3i;
 import org.allaymc.api.world.Dimension;
@@ -124,11 +125,20 @@ public class AllayDimension implements Dimension {
     }
 
     @Override
-    public void breakBlock(int x, int y, int z, ItemStack usedItem, EntityPlayer player) {
+    public boolean breakBlock(int x, int y, int z, ItemStack usedItem, EntityPlayer player) {
         var block = getBlockState(x, y, z);
         if (block.getBlockType() == AIR) {
             log.warn("Trying to break air block at x={}, y={}, z={}", x, y, z);
-            return;
+            return false;
+        }
+
+        var event = new BlockBreakEvent(
+                new BlockStateWithPos(block, new Position3i(x, y, z, this), 0),
+                usedItem, player
+        );
+        event.call();
+        if (event.isCancelled()) {
+            return false;
         }
 
         var pk = new LevelEventPacket();
@@ -150,6 +160,8 @@ public class AllayDimension implements Dimension {
         }
 
         if (player != null) player.exhaust(0.005f);
+
+        return true;
     }
 
     @Override
